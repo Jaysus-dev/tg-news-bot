@@ -16,7 +16,7 @@ class SendDailyNews extends Command
         $news = $rss->fetchNews(); // fetch all matching news
 
         if (empty($news)) {
-            $this->info("No news to send today.");
+            $this->info("No Related news to send today.");
             return 0;
         }
 
