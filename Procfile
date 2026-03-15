@@ -1,1 +1,2 @@
+web: php artisan serve 
 worker: sh -c "while true; do php artisan schedule:run; sleep 60; done"
