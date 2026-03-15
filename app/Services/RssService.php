@@ -20,7 +20,11 @@ class RssService
         'boholchronicle.com.ph/feed',
         'punch.dagupan.com/feed',
         'subicbaynews.com/feed',
-        '',
+        'https://tempo.mb.com.ph/feed/',
+        'tonite.abante.com.ph/feed',
+        'philnews.ph/feed',
+        'https://feeds.feedburner.com/TheSummitExpress',
+        'https://pilipinasdaily.com/feed/',
         'https://www.rappler.com/environment/feed/',
        
 
