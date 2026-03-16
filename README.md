@@ -1,59 +1,123 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+ <h1>Telegram News Bot</h1>
+  <p>
+    <strong>Telegram News Bot</strong> is an automated news aggregation bot that collects updates from multiple Philippine news sources and water-related organizations, then posts relevant updates to a Telegram group chat. It ensures group members receive timely information without manually checking multiple websites.
+  </p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+  <h2>Features</h2>
+  <ul>
+    <li><strong>Automatic News Fetching:</strong> Collects articles from multiple RSS feeds and sources.</li>
+    <li><strong>Real-time Updates:</strong> Sends news updates directly to a Telegram group chat.</li>
+    <li><strong>Scheduled Monitoring:</strong> Automatically checks feeds at regular intervals and posts new articles.</li>
+    <li><strong>Topic Filtering:</strong> Filters news related to:
+      <ul>
+        <li>Wind Projects</li>
+        <li>Water District Updates</li>
+        <li>Water-related news</li>
+      </ul>
+    </li>
+    <li><strong>Multiple News Sources:</strong> Integrates with major Philippine news outlets and government-related websites.</li>
+  </ul>
 
-## About Laravel
+  <h2>News Sources</h2>
+  <ul>
+    <li>DOE updates</li>
+    <li>LWUA news</li>
+    <li>DENR announcements</li>
+    <li>Water district websites</li>
+    <li>ABS-CBN News</li>
+    <li>GMA News</li>
+    <li>Manila Bulletin</li>
+    <li>Inquirer.net</li>
+    <li>Rappler</li>
+  </ul>
+  <blockquote>
+    Sources are fetched via <strong>RSS feeds</strong>, then filtered according to topics.
+  </blockquote>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+  <h2>Architecture</h2>
+  <pre>
+News Sources (RSS Feeds)
+        │
+        ▼
+   Laravel RSS Service
+        │
+        ▼
+  News Filtering (Wind / Water Topics)
+        │
+        ▼
+   Telegram Bot API
+        │
+        ▼
+   Telegram Group Chat
+  </pre>
+  <p>
+    <strong>Laravel RSS Service:</strong> Handles feed fetching and parsing.<br>
+    <strong>News Filtering:</strong> Extracts relevant articles based on keywords/topics.<br>
+    <strong>Telegram Bot API:</strong> Sends messages to your group automatically.
+  </p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+  <h2>News Fetching Window</h2>
+  <p>The bot fetches and sends news published within the <strong>daily window</strong>:</p>
+  <ul>
+    <li><strong>Start:</strong> 9:00 AM (previous day)</li>
+    <li><strong>End:</strong> 8:59 AM (current day)</li>
+  </ul>
+  <p><strong>Example:</strong> If today is <em>March 16</em>:</p>
+  <ul>
+    <li>The bot fetches articles from <strong>March 15, 9:00 AM</strong> to <strong>March 16, 8:59 AM</strong>.</li>
+    <li>Messages are sent to the Telegram group once the scheduler runs.</li>
+  </ul>
+  <p>This ensures all news for the day is collected and sent once daily, avoiding duplicates.</p>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+  <h2>Installation</h2>
+  <ol>
+    <li>
+      <strong>Clone the repository</strong>
+      <pre>git clone https://github.com/Jaysus-dev/telegram-news-bot.git
+cd telegram-news-bot</pre>
+    </li>
+    <li>
+      <strong>Install dependencies</strong>
+      <pre>composer install</pre>
+    </li>
+    <li>
+      <strong>Setup environment</strong>
+      <pre>cp .env.example .env
+php artisan key:generate</pre>
+      <p>Configure the following in <code>.env</code>:</p>
+      <pre>
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_group_chat_id_here
+      </pre>
+    </li>
+    <li>
+      <strong>Run migrations (if needed)</strong>
+      <pre>php artisan migrate</pre>
+    </li>
+  </ol>
 
-## Learning Laravel
+  <h2>Usage</h2>
+  <h3>Manual Run</h3>
+  <pre>php artisan telegram:send-news</pre>
+  <p>This fetches news and sends updates immediately.</p>
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+  <h3>Scheduled Run</h3>
+  <p>Add to your Laravel scheduler (<code>app/Console/Kernel.php</code>):</p>
+  <pre>$schedule->command('telegram:send-news')->dailyAt('09:00');</pre>
+  <p><em>Ensure your server or hosting provider runs Laravel’s scheduler (<code>php artisan schedule:run</code>) every minute.</em></p>
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+  <h2>Contributing</h2>
+  <ol>
+    <li>Fork the repository</li>
+    <li>Create your feature branch (<code>git checkout -b feature/new-feature</code>)</li>
+    <li>Commit your changes (<code>git commit -m 'Add new feature'</code>)</li>
+    <li>Push to the branch (<code>git push origin feature/new-feature</code>)</li>
+    <li>Open a pull request</li>
+  </ol>
 
-## Laravel Sponsors
+  <h2>Author</h2>
+  <p><strong>Jaysus-dev</strong> – Developer & Maintainer<br>
+  <a href="https://github.com/Jaysus-dev">GitHub Profile</a></p>
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+</body>
+</html>
