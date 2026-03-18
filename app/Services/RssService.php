@@ -28,18 +28,24 @@ class RssService
         'https://www.rappler.com/environment/feed/',
     ];
 
-    protected $keywords = [
-        'wind',
-        'energy',
-        'renewable',
-        'power shortage',
+   protected $keywords = [
+        // Wind / Renewable energy
+        'wind project',
+        'wind energy',
+        'renewable energy',
+        'solar',
+        'hydropower',
+
+        // Water District / Water supply / Water interruptions
+        'water district',
         'water interruption',
+        'water supply',
         'flood',
-        'rain',
         'dam',
         'reservoir',
         'irrigation',
-        'water supply',
+        'drinking water',
+        'hydration',
     ];
 
     public function fetchNews($maxPerFeed = 20)

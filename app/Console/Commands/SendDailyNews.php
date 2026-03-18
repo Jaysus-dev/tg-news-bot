@@ -11,172 +11,114 @@ use Carbon\Carbon;
 
 class SendDailyNews extends Command
 {
-    // ✅ Added --test option
-    protected $signature = 'news:send {--test : Force send anytime}';
-
+    protected $signature = 'news:send {--test : Force send anytime} {--realtime : Keep running in console}';
     protected $description = 'Send RSS news to Telegram based on schedule';
 
     public function handle(TelegramService $telegram, RssService $rss)
     {
-        $now = Carbon::now();
-        $hour = $now->hour;
-        $minute = $now->minute;
-        $time = $now->format('H:i');
-
         $forceTest = $this->option('test');
+        $realtime = $this->option('realtime');
 
-        $this->info("Running at {$time}");
-        Log::info("NEWS COMMAND RUNNING at {$time}");
-
-        if ($forceTest) {
-            $this->warn("⚠ TEST MODE ENABLED");
+        if ($realtime) {
+            $this->info("⚡ REAL-TIME MODE ENABLED (Press Ctrl+C to stop)");
         }
 
-        // ======================================
-        // 📰 FETCH NEWS
-        // ======================================
-        $news = $rss->fetchNews();
+        do {
+            $now = Carbon::now();
+            $hour = $now->hour;
+            $minute = $now->minute;
+            $time = $now->format('H:i');
 
-        // ✅ Safe fallback (unique link)
-        if (empty($news)) {
-            $news = [
-                [
-                    'title' => 'Manual Test News',
-                    'link' => 'https://manual-test.com/' . now()->timestamp,
-                    'date' => now()->toDateTimeString(),
-                ]
-            ];
-        }
+            $this->info("Checking news at {$time}");
+            Log::info("NEWS COMMAND RUNNING at {$time}");
 
-        // ======================================
-        // 🌅 MORNING DIGEST (9:00 - 9:05)
-        // ======================================
-        if (($hour === 9 && $minute < 5) && !$forceTest) {
+            // 📰 FETCH NEWS
+            $news = $rss->fetchNews();
 
-            $this->info("🌅 MORNING DIGEST MODE");
+            // Only consider news published today
+            $news = array_filter($news, fn($item) => isset($item['date']) && Carbon::parse($item['date'])->isToday());
 
-            $queued = DB::table('sent_news')
-                ->where('is_sent', false)
-                ->get();
+            foreach ($news as $item) {
+                $link = $item['link'] ?? null;
+                $title = $item['title'] ?? 'No title';
+                $pubDate = isset($item['date']) ? Carbon::parse($item['date']) : $now;
 
-            if ($queued->isEmpty()) {
-                $this->info("No queued news.");
-                return 0;
-            }
+                if (!$link) continue;
 
-            foreach ($queued as $item) {
+                // Skip duplicates
+                if (DB::table('sent_news')->where('link', $link)->exists()) {
+                    $this->line("⚠ Duplicate skipped: {$title}");
+                    continue;
+                }
+
+                $pubHour = $pubDate->hour;
+                $sendNow = false;
+
+                if ($forceTest) {
+                    $sendNow = true;
+                } else {
+                    // 9:00–17:00 today: send immediately
+                    if ($pubDate->isToday() && $pubHour >= 9 && $pubHour < 17 && $hour >= 9 && $hour < 17) {
+                        $sendNow = true;
+                    }
+                }
+
                 try {
-                    $message = "🌅 <b>MORNING NEWS DIGEST</b>\n\n🔗 {$item->link}";
-
-                    $telegram->sendMessage($message);
-
-                    DB::table('sent_news')
-                        ->where('id', $item->id)
-                        ->update([
+                    if ($sendNow) {
+                        // Send immediately
+                        DB::table('sent_news')->insert([
+                            'link' => $link,
                             'is_sent' => true,
+                            'created_at' => now(),
                             'updated_at' => now(),
                         ]);
 
-                    $this->info("Sent morning: {$item->link}");
+                        $telegram->sendMessage($this->formatMessage($item));
+                        $this->info("📤 Sent: {$title}");
+                        Log::info("REALTIME SENT: {$link}");
+                    } else {
+                        // Queue for morning digest
+                        DB::table('sent_news')->insert([
+                            'link' => $link,
+                            'is_sent' => false,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
 
+                        $this->info("🌙 Queued: {$title}");
+                        Log::info("QUEUED: {$link}");
+                    }
                 } catch (\Exception $e) {
-                    Log::error("Morning error: " . $e->getMessage());
+                    $this->error("❌ Failed: {$title} ({$link})");
+                    Log::error("Error processing {$link}: " . $e->getMessage());
                 }
             }
 
-            return 0;
-        }
-
-        // ======================================
-        // ☀ REAL-TIME MODE (9AM–5PM OR TEST)
-        // ======================================
-        if (($hour >= 9 && $hour < 17) || $forceTest) {
-
-            $this->info("☀ REAL-TIME MODE");
-
-            foreach ($news as $item) {
-
-                $this->line("Processing: " . json_encode($item));
-
-                $link = $item['link'] ?? null;
-
-                if (!$link) {
-                    $this->error("❌ Missing link, skipping");
-                    continue;
-                }
-
-                // ✅ Check duplicate manually
-                $exists = DB::table('sent_news')
-                    ->where('link', $link)
-                    ->exists();
-
-                if ($exists) {
-                    $this->warn("⚠ Duplicate: {$link}");
-                    continue;
-                }
-
-                try {
-                    // ✅ INSERT FIRST
-                    DB::table('sent_news')->insert([
-                        'link' => $link,
-                        'is_sent' => true,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    $this->info("✅ Inserted: {$link}");
-
-                    // ✅ THEN SEND
-                    $telegram->sendMessage($this->formatMessage($item));
-
-                    $this->info("📤 Sent: " . ($item['title'] ?? 'No title'));
-
-                    Log::info("REALTIME SENT: {$link}");
-
-                } catch (\Exception $e) {
-                    $this->error("❌ ERROR: " . $e->getMessage());
-                    Log::error("Realtime error: " . $e->getMessage());
+            // 🌅 MORNING DIGEST (9:00 - 9:05)
+            if ($hour === 9 && $minute < 5) {
+                $queued = DB::table('sent_news')->where('is_sent', false)->get();
+                foreach ($queued as $item) {
+                    try {
+                        $telegram->sendMessage("🌅 <b>MORNING NEWS DIGEST</b>\n\n🔗 {$item->link}");
+                        DB::table('sent_news')->where('id', $item->id)->update([
+                            'is_sent' => true,
+                            'updated_at' => now(),
+                        ]);
+                        $this->info("Sent morning: {$item->link}");
+                        Log::info("MORNING DIGEST SENT: {$item->link}");
+                    } catch (\Exception $e) {
+                        Log::error("Morning send failed: " . $e->getMessage());
+                    }
                 }
             }
 
-            return 0;
-        }
+            // If not in realtime mode, break after one iteration
+            if (!$realtime) break;
 
-        // ======================================
-        // 🌙 NIGHT MODE (QUEUE ONLY)
-        // ======================================
-        $this->info("🌙 NIGHT MODE");
+            // Wait 60 seconds before next check in realtime mode
+            sleep(60);
 
-        foreach ($news as $item) {
-
-            $link = $item['link'] ?? null;
-
-            if (!$link) continue;
-
-            $exists = DB::table('sent_news')
-                ->where('link', $link)
-                ->exists();
-
-            if ($exists) {
-                continue;
-            }
-
-            try {
-                DB::table('sent_news')->insert([
-                    'link' => $link,
-                    'is_sent' => false,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                $this->info("Queued: " . ($item['title'] ?? 'No title'));
-
-                Log::info("QUEUED: {$link}");
-
-            } catch (\Exception $e) {
-                Log::error("Queue error: " . $e->getMessage());
-            }
-        }
+        } while ($realtime);
 
         return 0;
     }
@@ -187,6 +129,6 @@ class SendDailyNews extends Command
         $link = $item['link'] ?? 'No link';
         $date = $item['date'] ?? now()->toDateTimeString();
 
-        return "🚨 <b>NEWS</b>\n\n<b>{$title}</b>\n\n🔗 {$link}\n🕒 <i>{$date}</i>";
+        return "🚨 <b>WIND & WATER  RELATED NEWS</b>\n\n<b>{$title}</b>\n\n🔗 {$link}\n🕒 <i>{$date}</i>";
     }
 }
