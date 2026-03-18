@@ -11,6 +11,10 @@ class RssService
         'https://news.abs-cbn.com/rss',
         'https://www.gmanetwork.com/news/rss/news',
         'https://www.inquirer.net/fullfeed',
+        'https://www.philstar.com/rss/headlines',
+        'https://www.philstar.com/rss/nation',
+        'https://balita.mb.com.ph/rssfeed/0/',
+        'https://balita.mb.com.ph/rssFeed/14/',
         'https://interaksyon.philstar.com/feed',
         'https://mindanaotimes.com.ph/feed',
         'https://mindanews.com/feed',
@@ -30,10 +34,13 @@ class RssService
 
    protected $keywords = [
         // Wind / Renewable energy
-        'wind project',
+        'wind projects',
+         'wind project',
         'wind energy',
         'renewable energy',
         'solar',
+        'solar power',
+        'hydro',
         'hydropower',
 
         // Water District / Water supply / Water interruptions
@@ -41,7 +48,6 @@ class RssService
         'water interruption',
         'water supply',
         'flood',
-        'dam',
         'reservoir',
         'irrigation',
         'drinking water',
