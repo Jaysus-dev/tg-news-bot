@@ -8,7 +8,6 @@ use Carbon\Carbon;
 class RssService
 {
     protected $feeds = [
-        // Mainstream news
         'https://news.abs-cbn.com/rss',
         'https://www.gmanetwork.com/news/rss/news',
         'https://www.inquirer.net/fullfeed',
@@ -33,32 +32,19 @@ class RssService
         'wind',
         'energy',
         'renewable',
-        'power',
-        'water',
+        'power shortage',
+        'water interruption',
         'flood',
         'rain',
         'dam',
         'reservoir',
         'irrigation',
         'water supply',
-        'water interruption'
     ];
 
-    /**
-     * Fetch news from all feeds filtered by keywords and date window.
-     *
-     * @param int $maxPerFeed
-     * @param Carbon|null $startDate
-     * @param Carbon|null $endDate
-     * @return array
-     */
-    public function fetchNews($maxPerFeed = 10, $startDate = null, $endDate = null)
+    public function fetchNews($maxPerFeed = 20)
     {
         $results = [];
-
-        // Daily window: 9:00 AM previous day → 8:59 AM today
-        $startDate ??= Carbon::now()->subDay()->setHour(9)->setMinute(0)->setSecond(0);
-        $endDate ??= Carbon::now()->setHour(8)->setMinute(59)->setSecond(59);
 
         foreach ($this->feeds as $feedUrl) {
             try {
@@ -67,33 +53,30 @@ class RssService
 
                 foreach ($items as $item) {
                     $title = strtolower($item->get_title());
-                    $pubDate = Carbon::parse($item->get_date());
 
-                    // Check if date is within window
-                    if ($pubDate->lt($startDate) || $pubDate->gt($endDate)) {
-                        // Uncomment to debug skipped articles by date
-                        // echo "[SKIP - DATE] " . $item->get_title() . " | " . $pubDate . "\n";
-                        continue;
-                    }
-
-                    // Check for keywords
                     foreach ($this->keywords as $keyword) {
                         if (str_contains($title, $keyword)) {
                             $results[] = [
                                 'title' => $item->get_title(),
                                 'link'  => $item->get_link(),
-                                'date'  => $pubDate->format('Y-m-d H:i:s'),
+                                'date'  => Carbon::parse($item->get_date())->format('Y-m-d H:i:s'),
                             ];
-                            break; // matched one keyword, skip others
+                            break;
                         }
                     }
                 }
-
             } catch (\Exception $e) {
-                // Uncomment to debug failed feeds
-                // echo "Failed feed: $feedUrl | " . $e->getMessage() . "\n";
                 continue;
             }
+        }
+
+        // Fallback test news if empty
+        if (empty($results)) {
+            $results[] = [
+                'title' => 'Manual Test News',
+                'link' => 'https://manual-test.com',
+                'date' => now()->toDateTimeString(),
+            ];
         }
 
         return $results;
