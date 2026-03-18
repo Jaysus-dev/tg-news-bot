@@ -24,7 +24,7 @@ class SendDailyNews extends Command
         }
 
         do {
-            $now = Carbon::now();
+            $now = Carbon::now('Asia/Manila');
             $hour = $now->hour;
             $minute = $now->minute;
             $time = $now->format('H:i');
@@ -38,10 +38,24 @@ class SendDailyNews extends Command
             // Only consider news published today
             $news = array_filter($news, fn($item) => isset($item['date']) && Carbon::parse($item['date'])->isToday());
 
+            // ✅ TERMINAL FALLBACK if no news today
+            if (empty($news)) {
+                $fallbackTitle = "No newly published wind/water news today";
+                $fallbackDate  = $now->format('Y-m-d H:i:s');
+
+                $this->info("ℹ Fallback: {$fallbackTitle}");
+                Log::info("FALLBACK: {$fallbackTitle} at {$fallbackDate}");
+
+                // Skip the rest of the loop
+                if (!$realtime) break;
+                sleep(60);
+                continue;
+            }
+
             foreach ($news as $item) {
                 $link = $item['link'] ?? null;
                 $title = $item['title'] ?? 'No title';
-                $pubDate = isset($item['date']) ? Carbon::parse($item['date']) : $now;
+                $pubDate = isset($item['date']) ? Carbon::parse($item['date'])->setTimezone('Asia/Manila') : $now;
 
                 if (!$link) continue;
 
@@ -51,14 +65,13 @@ class SendDailyNews extends Command
                     continue;
                 }
 
-                $pubHour = $pubDate->hour;
                 $sendNow = false;
 
+                // Determine sending status
                 if ($forceTest) {
                     $sendNow = true;
                 } else {
-                    // 9:00–17:00 today: send immediately
-                    if ($pubDate->isToday() && $pubHour >= 9 && $pubHour < 17 && $hour >= 9 && $hour < 17) {
+                    if ($pubDate->isToday() && $hour >= 9 && $hour < 17) {
                         $sendNow = true;
                     }
                 }
@@ -112,10 +125,8 @@ class SendDailyNews extends Command
                 }
             }
 
-            // If not in realtime mode, break after one iteration
             if (!$realtime) break;
 
-            // Wait 60 seconds before next check in realtime mode
             sleep(60);
 
         } while ($realtime);
@@ -129,6 +140,6 @@ class SendDailyNews extends Command
         $link = $item['link'] ?? 'No link';
         $date = $item['date'] ?? now()->toDateTimeString();
 
-        return "🚨 <b>WIND & WATER  RELATED NEWS</b>\n\n<b>{$title}</b>\n\n🔗 {$link}\n🕒 <i>{$date}</i>";
+        return "🚨 <b>WIND & WATER NEWS</b>\n\n<b>{$title}</b>\n\n🔗 {$link}\n🕒 <i>{$date}</i>";
     }
 }

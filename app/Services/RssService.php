@@ -61,7 +61,7 @@ class RssService
         'water district',
         'water interruption',
         'water supply',
-        //'flood',
+        'flood',
         'reservoir',
         'irrigation',
         'drinking water',
