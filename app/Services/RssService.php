@@ -60,6 +60,7 @@ class RssService
     'solar power',
     'solar energy',
     'solar project',
+      'hydropower plant',
     'hydropower',
     'hydroelectric project',
     'geothermal energy',
@@ -115,7 +116,6 @@ class RssService
     'water monitoring',
     'dam levels',
     'water resources',
-       
     ];
 
     public function fetchNews($maxPerFeed = 20)
